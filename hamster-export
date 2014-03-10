@@ -350,9 +350,25 @@ class Jira(Profile):
         options['server'] = options['url']
         from jira.client import JIRA
         self._jira = JIRA(options, kerberos=options.pop('kerberos', False))
+        self._ticket_jql_format = options.get('ticket_jql_format')
 
     def submit_entry(self, entry):
-        self._jira.add_worklog(entry.ticket, timeSpentSeconds=entry.duration,
+        if '-' in entry.ticket:
+            issue = entry.ticket
+        else:
+            if not self._ticket_jql_format:
+                raise ValueError('Ticket %r is not a valid JIRA issue key and '
+                        'ticket_jql_format was not set' % entry.ticket)
+            issues = self._jira.search_issues(
+                    self._ticket_jql_format.format(entry.ticket),
+                    fields=['key'])
+            if not issues:
+                raise ValueError('No JIRA issues found for ticket %r' % entry.ticket)
+            if len(issues) > 1:
+                raise RuntimeError('Multiple JIRA issues found for ticket %r: %s'
+                        % (entry.ticket, ', '.join(issue.key for issue in issues)))
+            issue = issues[0]
+        self._jira.add_worklog(issue, timeSpentSeconds=entry.duration,
                 started=entry.datetime)
 
 
