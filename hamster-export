@@ -9,6 +9,7 @@ from __future__ import print_function
 import sys
 import re
 import os
+import urlparse
 import urllib
 import urllib2
 from datetime import datetime, date
@@ -163,6 +164,10 @@ class TimeEntry(object):
             match = re.match(r'([bB][zZ]#?|#|ticket)(\d+)', string)
             if match:
                 return match.group(2)
+            # JIRA ticket ids are like: PRJ-123
+            match = re.match(r'[A-Z]+-\d+', string)
+            if match:
+                return match.group(0)
         return default
 
     @staticmethod
@@ -240,6 +245,18 @@ class Profile(object):
         return None
 
     def process(self, timesheet, **kwargs):
+        timesheet = self.filter_timesheet(timesheet)
+        timesheet = self.edit_timesheet(timesheet)
+        timesheet.check_activities(self._activities.values())
+
+        total = len(timesheet.entries)
+        for i, entry in enumerate(timesheet.entries, start=1):
+            result = self.submit_entry(entry)
+            print('[{}/{}] {} {} ({})'.format(i, total, entry.name,
+                                              entry.repr_duration(),
+                                              entry.date))
+
+    def submit_entry(self, timesheet_entry):
         raise NotImplementedError
 
     def validate(self):
@@ -279,18 +296,6 @@ class ActiveCollab(Profile):
 
         if not self.user_id.isdigit():
             exit('Invalid ActiveCollab api_key in profile', self.name)
-
-    def process(self, timesheet, **kwargs):
-        timesheet = self.filter_timesheet(timesheet)
-        timesheet = ActiveCollab.edit_timesheet(timesheet)
-        timesheet.check_activities(self._activities.values())
-
-        total = len(timesheet.entries)
-        for i, entry in enumerate(timesheet.entries, start=1):
-            result = self.submit_entry(entry)
-            print('[{}/{}] {} {} ({})'.format(i, total, entry.name,
-                                              entry.repr_duration(),
-                                              entry.date))
 
     def submit_entry(self, entry):
         activity = self.get_activity(entry.name)
@@ -337,6 +342,19 @@ class ActiveCollab(Profile):
             sys.exit(0)
 
 
+class Jira(Profile):
+
+    def __init__(self, name, options):
+        super(Jira, self).__init__(name)
+        options['server'] = options['url']
+        from jira.client import JIRA
+        self._jira = JIRA(options, kerberos=options.pop('kerberos', False))
+
+    def submit_entry(self, entry):
+        self._jira.add_worklog(entry.ticket, timeSpentSeconds=entry.duration,
+                started=entry.datetime)
+
+
 def load_profile(config_files, profile_name, activities):
     config = ConfigParser.SafeConfigParser()
     config.read(config_files)
@@ -349,6 +367,8 @@ def load_profile(config_files, profile_name, activities):
         profile = ActiveCollab(profile_name, config.get(section, 'url'),
                                config.get(section, 'api_key'),
                                dict(config.items(section)))
+    elif config.get(section, 'format') == 'jira':
+        profile = Jira(profile_name, dict(config.items(section)))
     else:
         exit('Not supported format:', config.get(section, 'format'))
 
