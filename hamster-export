@@ -47,6 +47,9 @@ class Timesheet(object):
     def __init__(self, entries=[]):
         self._entries = entries
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self._entries)
+
     def add_entry(self, entry):
         self._entries.append(entry)
 
@@ -131,6 +134,10 @@ class TimeEntry(object):
         self.duration = duration
         self.description = description
         self.ticket = ticket
+
+    def __repr__(self):
+        return '%s(name=%r, datetime=%r, duration=%r, ticket=%r)' % (self.__class__.__name__,
+                self.name, self.datetime, self.duration, self.ticket)
 
     @property
     def activity(self):
