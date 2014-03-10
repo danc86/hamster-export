@@ -253,7 +253,9 @@ class Profile(object):
         return new_timesheet
 
     @staticmethod
-    def edit_timesheet(timesheet, editor='vim'):
+    def edit_timesheet(timesheet, editor=None):
+        if editor is None:
+            editor = os.environ.get('EDITOR', 'vim')
         new_timesheet = None
         with tempfile.NamedTemporaryFile(suffix='.tmp') as tmp_file:
             tmp_file.write(timesheet.export())
