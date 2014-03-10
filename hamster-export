@@ -158,7 +158,7 @@ class TimeEntry(object):
         return round_up(self.duration, 60) / 60
 
     @staticmethod
-    def parse_ticket(string, default=' '):
+    def parse_ticket(string, default=''):
         if string:
             match = re.match(r'([bB][zZ]#?|#|ticket)(\d+)', string)
             if match:
@@ -168,7 +168,8 @@ class TimeEntry(object):
     @staticmethod
     def from_hamster_fact(fact):
         duration = fact.delta.seconds + fact.delta.days * 24 * 60 * 60
-        ticket = TimeEntry.parse_ticket(fact.description)
+        ticket = TimeEntry.parse_ticket(fact.description) or \
+                 TimeEntry.parse_ticket(fact.activity)
         name = TimeEntry.make_name(fact.activity, fact.category)
         return TimeEntry(name, fact.start_time.replace(tzinfo=dateutil.tz.tzlocal()),
                 duration, fact.description, ticket)
