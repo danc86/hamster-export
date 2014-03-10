@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='hamster-export',
@@ -20,5 +20,8 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Topic :: Time tracking :: Communications',
+    ],
+    install_requires=[
+        'python-dateutil',
     ],
 )

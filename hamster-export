@@ -12,6 +12,7 @@ import os
 import urllib
 import urllib2
 from datetime import datetime, date
+import dateutil.tz
 import calendar
 import subprocess
 import tempfile
@@ -169,8 +170,8 @@ class TimeEntry(object):
         duration = fact.delta.seconds + fact.delta.days * 24 * 60 * 60
         ticket = TimeEntry.parse_ticket(fact.description)
         name = TimeEntry.make_name(fact.activity, fact.category)
-        return TimeEntry(name, fact.start_time, duration, fact.description,
-                         ticket)
+        return TimeEntry(name, fact.start_time.replace(tzinfo=dateutil.tz.tzlocal()),
+                duration, fact.description, ticket)
 
     def repr_duration(self):
         hours = self.duration_mins / 60
@@ -195,7 +196,8 @@ class TimeEntry(object):
 
     @staticmethod
     def from_values(values):
-        dt = datetime.strptime(values['datetime'], DATETIME_FORMAT)
+        dt = datetime.strptime(values['datetime'], DATETIME_FORMAT)\
+                .replace(tzinfo=dateutil.tz.tzlocal())
         duration = TimeEntry.parse_duration(values['duration'])
         return TimeEntry(values['name'].strip(), dt, duration,
                          values['description'].strip(),
